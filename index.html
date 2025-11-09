@@ -1,15 +1,23 @@
 <!doctype html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <title>AR YouTube Experience</title>
+
+  <!-- A-Frame & AR.js -->
   <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
   <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
+  <!-- YouTube Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
   <script>
     const API_URL = "https://your-ar-tunnel.example.com"; // Cloudflare tunnel URL
-    const sectionSequence = ["section1", "section2", "section3"]; // Add all sections
+    const sectionSequence = ["section1", "section2", "section3"];
     let currentSectionIndex = 0;
+    let player;
 
     function getToken() {
       const token = localStorage.getItem("arToken");
@@ -20,7 +28,6 @@
     async function unlockNextSection() {
       const token = getToken();
       if (!token) return;
-
       if (currentSectionIndex >= sectionSequence.length) return;
 
       const sectionId = sectionSequence[currentSectionIndex];
@@ -38,7 +45,6 @@
         const data = await res.json();
         console.log("Unlocked sections:", data.unlocked_sections);
 
-        // Reveal marker corresponding to section
         const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
         if (marker) marker.setAttribute("visible", true);
 
@@ -48,51 +54,62 @@
       }
     }
 
+    async function loadUnlockedSections() {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${API_URL}/unlocked-sections`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const unlocked = data.unlocked_sections || [];
+        console.log("Already unlocked sections:", unlocked);
+
+        unlocked.forEach(sectionId => {
+          const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
+          if (marker) marker.setAttribute("visible", true);
+
+          const index = sectionSequence.indexOf(sectionId);
+          if (index >= 0 && index >= currentSectionIndex) currentSectionIndex = index + 1;
+        });
+      } catch (err) {
+        console.error("Failed to load unlocked sections:", err);
+      }
+    }
+
+    // YouTube handler for AR markers
     AFRAME.registerComponent('youtubehandler', {
       init: function () {
         const marker = this.el;
         const iframe = document.querySelector("#youtubeIframe");
 
         marker.addEventListener('markerFound', function () {
-          iframe.style.display = "block";  // Show iframe when marker found
+          iframe.style.display = "block";
+          if (player) player.playVideo();
         });
 
         marker.addEventListener('markerLost', function () {
-          iframe.style.display = "none";   // Hide iframe when marker lost
+          iframe.style.display = "none";
+          if (player) player.pauseVideo();
         });
       }
     });
-    async function loadUnlockedSections() {
-  const token = getToken();
-  if (!token) return;
 
-  try {
-    const res = await fetch(`${API_URL}/unlocked-sections`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+    // Initialize YouTube Player API
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('youtubeIframe', {
+        events: {
+          'onReady': function(event) {
+            console.log("YouTube Player ready");
+          }
+        }
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadUnlockedSections();
     });
-    const data = await res.json();
-    const unlocked = data.unlocked_sections || [];
-    console.log("Already unlocked sections:", unlocked);
-
-    unlocked.forEach(sectionId => {
-      const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
-      if (marker) marker.setAttribute("visible", true);
-
-      // Make sure the next section index is correct
-      const index = sectionSequence.indexOf(sectionId);
-      if (index >= 0 && index >= currentSectionIndex) {
-        currentSectionIndex = index + 1;
-      }
-    });
-  } catch (err) {
-    console.error("Failed to load unlocked sections:", err);
-  }
-}
-window.addEventListener("DOMContentLoaded", () => {
-  loadUnlockedSections();
-
   </script>
 
   <style>
@@ -116,10 +133,12 @@ window.addEventListener("DOMContentLoaded", () => {
       font-size: 18px;
       z-index: 20;
     }
+
+    body { margin: 0; overflow: hidden; }
   </style>
 </head>
 
-<body style="margin:0; overflow:hidden;">
+<body>
 
   <!-- YouTube iframe -->
   <iframe id="youtubeIframe" src="https://www.youtube.com/embed/VIDEO_ID?enablejsapi=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>
@@ -128,41 +147,41 @@ window.addEventListener("DOMContentLoaded", () => {
   <button id="nextBtn" onclick="unlockNextSection()">Next</button>
 
   <a-scene
-      vr-mode-ui="enabled: false"
-      loading-screen="enabled: false;"
-      arjs='sourceType: webcam; debugUIEnabled: false;'
-      id="scene"
-      embedded
-      gesture-detector
+    vr-mode-ui="enabled: false"
+    loading-screen="enabled: false;"
+    arjs='sourceType: webcam; debugUIEnabled: false;'
+    id="scene"
+    embedded
+    gesture-detector
   >
     <!-- Section 1 Marker -->
     <a-marker
-        type="pattern"
-        preset="custom"
-        url="assets/marker1.patt"
-        youtubehandler
-        data-section-id="section1"
-        visible="true"
+      type="pattern"
+      preset="custom"
+      url="assets/marker1.patt"
+      youtubehandler
+      data-section-id="section1"
+      visible="true"
     ></a-marker>
 
     <!-- Section 2 Marker -->
     <a-marker
-        type="pattern"
-        preset="custom"
-        url="assets/marker2.patt"
-        youtubehandler
-        data-section-id="section2"
-        visible="false"
+      type="pattern"
+      preset="custom"
+      url="assets/marker2.patt"
+      youtubehandler
+      data-section-id="section2"
+      visible="false"
     ></a-marker>
 
     <!-- Section 3 Marker -->
     <a-marker
-        type="pattern"
-        preset="custom"
-        url="assets/marker3.patt"
-        youtubehandler
-        data-section-id="section3"
-        visible="false"
+      type="pattern"
+      preset="custom"
+      url="assets/marker3.patt"
+      youtubehandler
+      data-section-id="section3"
+      visible="false"
     ></a-marker>
 
     <a-entity camera></a-entity>
