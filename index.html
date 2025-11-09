@@ -7,27 +7,20 @@
   <!-- A-Frame & AR.js -->
   <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
 
   <script>
-    const API_URL = "https://your-ar-tunnel.example.com"; // Cloudflare tunnel URL
-    const sectionSequence = ["section1", "section2", "section3"];
-    let currentSectionIndex = 0;
+    const API_URL = "https://your-ar-tunnel.example.com"; // Your FastAPI backend
+    const SECTION_ID = "section2"; // The section to unlock
 
-    // Token management
     function getToken() {
       const token = localStorage.getItem("arToken");
       if (!token) alert("You must login first to access AR content!");
       return token;
     }
 
-    async function unlockNextSection() {
+    async function unlockSection() {
       const token = getToken();
       if (!token) return;
-      if (currentSectionIndex >= sectionSequence.length) return;
-
-      const sectionId = sectionSequence[currentSectionIndex];
 
       try {
         const res = await fetch(`${API_URL}/unlock-section`, {
@@ -36,54 +29,24 @@
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-          body: JSON.stringify({ section_id: sectionId })
+          body: JSON.stringify({ section_id: SECTION_ID })
         });
 
         const data = await res.json();
-        console.log("Unlocked sections:", data.unlocked_sections);
-
-        const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
-        if (marker) marker.setAttribute("visible", true);
-
-        currentSectionIndex++;
+        console.log("Section unlocked:", data);
       } catch (err) {
         console.error("Failed to unlock section:", err);
       }
     }
 
-    async function loadUnlockedSections() {
-      const token = getToken();
-      if (!token) return;
-
-      try {
-        const res = await fetch(`${API_URL}/unlocked-sections`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const unlocked = data.unlocked_sections || [];
-        console.log("Already unlocked sections:", unlocked);
-
-        unlocked.forEach(sectionId => {
-          const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
-          if (marker) marker.setAttribute("visible", true);
-
-          const index = sectionSequence.indexOf(sectionId);
-          if (index >= 0 && index >= currentSectionIndex) currentSectionIndex = index + 1;
-        });
-      } catch (err) {
-        console.error("Failed to load unlocked sections:", err);
-      }
-    }
-
-    // Component for AR video plane
+    // Minimal YouTube component for AR
     AFRAME.registerComponent('youtube-plane', {
       schema: { videoId: { type: 'string' } },
       init: function () {
         const marker = this.el;
 
-        // Create a hidden video element for YouTube
+        // Hidden video element
         this.videoEl = document.createElement('video');
-        this.videoEl.setAttribute('crossorigin', 'anonymous');
         this.videoEl.setAttribute('playsinline', '');
         this.videoEl.style.display = 'none';
         document.body.appendChild(this.videoEl);
@@ -92,13 +55,15 @@
         this.player = new YT.Player(this.videoEl, {
           videoId: this.data.videoId,
           events: {
-            'onReady': () => { console.log("YT Player ready"); },
+            'onReady': () => console.log("YT Player ready"),
           }
         });
 
+        // When marker detected → play video & unlock section
         marker.addEventListener('markerFound', () => {
           this.videoEl.style.display = 'block';
           this.videoEl.play();
+          unlockSection(); // trigger backend unlock
         });
 
         marker.addEventListener('markerLost', () => {
@@ -107,46 +72,21 @@
         });
       }
     });
-
-    // Load sections on DOM ready
-    window.addEventListener("DOMContentLoaded", () => {
-      loadUnlockedSections();
-    });
-
   </script>
-
-  <style>
-    #nextBtn {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 20px;
-      font-size: 18px;
-      z-index: 20;
-    }
-    body { margin: 0; overflow: hidden; }
-  </style>
 </head>
 
 <body>
-  <button id="nextBtn" onclick="unlockNextSection()">Next</button>
-
   <a-scene
     vr-mode-ui="enabled: false"
-    loading-screen="enabled: false;"
     arjs='sourceType: webcam; debugUIEnabled: false;'
     embedded
-    gesture-detector
   >
-    <!-- Section 1 Marker -->
+    <!-- Single Marker -->
     <a-marker
       type="pattern"
       preset="custom"
       url="assets/marker1.patt"
       youtube-plane="videoId: VIDEO_ID"
-      data-section-id="section1"
-      visible="true"
     >
       <a-plane
         position="0 0.1 0"
@@ -154,42 +94,6 @@
         width="1.5"
         height="0.85"
         material="shader: flat; src: #youtubeVideoTexture"
-      ></a-plane>
-    </a-marker>
-
-    <!-- Section 2 Marker -->
-    <a-marker
-      type="pattern"
-      preset="custom"
-      url="assets/marker2.patt"
-      youtube-plane="videoId: VIDEO_ID2"
-      data-section-id="section2"
-      visible="false"
-    >
-      <a-plane
-        position="0 0.1 0"
-        rotation="-90 0 0"
-        width="1.5"
-        height="0.85"
-        material="shader: flat; src: #youtubeVideoTexture2"
-      ></a-plane>
-    </a-marker>
-
-    <!-- Section 3 Marker -->
-    <a-marker
-      type="pattern"
-      preset="custom"
-      url="assets/marker3.patt"
-      youtube-plane="videoId: VIDEO_ID3"
-      data-section-id="section3"
-      visible="false"
-    >
-      <a-plane
-        position="0 0.1 0"
-        rotation="-90 0 0"
-        width="1.5"
-        height="0.85"
-        material="shader: flat; src: #youtubeVideoTexture3"
       ></a-plane>
     </a-marker>
 
