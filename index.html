@@ -86,29 +86,29 @@
 
 <body>
   <a-scene
-    vr-mode-ui="enabled: false"
-    arjs='sourceType: webcam; debugUIEnabled: false;'
-    embedded
+  vr-mode-ui="enabled: false"
+  arjs='sourceType: webcam; debugUIEnabled: false;'
+  embedded
+>
+  <a-marker
+    type="pattern"
+    preset="custom"
+    url="marker.patt"
+    youtube-plane="videoId: ZQ8qg5Xi018"
   >
-    <!-- Single Marker -->
-    <a-marker
-      type="pattern"
-      preset="custom"
-      url="marker.patt"
-      youtube-plane="videoId: VIDEO_ID"
-    >
-      <a-plane
-        position="0 0.1 0"
-        rotation="-90 0 0"
-        width="1.5"
-        height="0.85"
-        material="shader: flat; src: #youtubeVideoTexture"
-      ></a-plane>
-    </a-marker>
+    <a-plane
+      position="0 0.1 0"
+      rotation="-90 0 0"
+      width="1.5"
+      height="0.85"
+      material="shader: flat;"
+    ></a-plane>
+  </a-marker>
 
-    <a-entity camera></a-entity>
-  </a-scene>
+  <a-entity camera></a-entity>
+</a-scene>
 
-  <script src="https://youtu.be/ZQ8qg5Xi018"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+
 </body>
 </html>
