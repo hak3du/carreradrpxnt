@@ -62,6 +62,35 @@
         });
       }
     });
+    async function loadUnlockedSections() {
+  const token = getToken();
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_URL}/unlocked-sections`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    const unlocked = data.unlocked_sections || [];
+    console.log("Already unlocked sections:", unlocked);
+
+    unlocked.forEach(sectionId => {
+      const marker = document.querySelector(`[data-section-id="${sectionId}"]`);
+      if (marker) marker.setAttribute("visible", true);
+
+      // Make sure the next section index is correct
+      const index = sectionSequence.indexOf(sectionId);
+      if (index >= 0 && index >= currentSectionIndex) {
+        currentSectionIndex = index + 1;
+      }
+    });
+  } catch (err) {
+    console.error("Failed to load unlocked sections:", err);
+  }
+}
+
   </script>
 
   <style>
