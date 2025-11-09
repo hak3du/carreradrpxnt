@@ -149,6 +149,15 @@
     isDragging = false;
     iframe.style.cursor = "grab";
   });
+  const marker = document.querySelector("#ytMarker");
+marker.addEventListener("markerFound", () => {
+  iframe.style.display = "block";
+  unlockNextSection();
+});
+marker.addEventListener("markerLost", () => {
+  iframe.style.display = "none";
+});
+
 </script>
 
 <script src="https://www.youtube.com/iframe_api"></script>
