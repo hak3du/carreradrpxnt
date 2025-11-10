@@ -10,6 +10,7 @@
 
 <style>
   body { margin: 0; overflow: hidden; background: #000; }
+
   #instructions {
     position: absolute;
     top: 15px;
@@ -22,12 +23,14 @@
     border-radius: 8px;
     z-index: 9999;
   }
+
   .ar-marker {
     display: flex;
     justify-content: center;
     align-items: center;
     margin: 20px auto;
   }
+
   .ar-marker img {
     width: 500px;
     height: auto;
@@ -35,6 +38,7 @@
     object-fit: contain;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
+
   #ytFrame { display: none; width: 640px; height: 360px; }
 </style>
 </head>
@@ -58,6 +62,7 @@
 
 <!-- AR.js Scene -->
 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
+  <!-- Custom Marker -->
   <a-marker type="pattern" url="marker.patt" id="videoMarker">
     <a-entity
       id="ytPlane"
@@ -68,20 +73,21 @@
       gesture-controls
     ></a-entity>
   </a-marker>
+
   <a-entity camera></a-entity>
 </a-scene>
 
 <script>
 const API_URL = "https://breath-civilization-friday-movers.trycloudflare.com";
-const sections = ["section1", "section2", "section3"];
 
+// Get auth token
 function getToken() {
   const token = localStorage.getItem("arToken");
   if(!token) alert("You must login first!");
   return token;
 }
 
-// Unlock section when marker detected
+// Unlock a specific section on backend
 async function unlockSection(sectionId) {
   const token = getToken();
   if(!token) return;
@@ -102,7 +108,7 @@ async function unlockSection(sectionId) {
   }
 }
 
-// Update frontend based on backend unlocked sections
+// Update frontend display based on backend unlocked sections
 async function checkUnlockedSections() {
   const token = getToken();
   if(!token) return;
@@ -124,7 +130,7 @@ async function checkUnlockedSections() {
   }
 }
 
-// Poll every 2 seconds
+// Poll backend every 2 seconds
 setInterval(checkUnlockedSections, 2000);
 
 // Gesture controls for AR plane
@@ -166,11 +172,12 @@ AFRAME.registerComponent("gesture-controls", {
   }
 });
 
-// Connect marker events to section unlocking
+// Marker events: unlock section and show AR video
 const marker = document.querySelector("#videoMarker");
 marker.addEventListener("markerFound", () => {
   console.log("Marker detected 🎯");
-  unlockSection("section1"); // Example: unlock section1 on first marker
+  unlockSection("section1"); // Unlock corresponding section
+  document.querySelector("#ytFrame").style.display = "block"; // show video in AR
 });
 
 marker.addEventListener("markerLost", () => console.log("Marker lost ❌"));
