@@ -1,12 +1,30 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <title>AR Next Button Scene</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #nextBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: limegreen;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
 </head>
-<body style="margin:0; overflow:hidden;">
+<body>
 
   <!-- AR Scene -->
   <a-scene
@@ -25,54 +43,42 @@
   </a-scene>
 
   <!-- Next Button -->
-  <button id="nextBtn" style="
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 9999;
-      padding: 12px 20px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      background: limegreen;
-      color: white;
-      font-weight: bold;
-  ">Next</button>
+  <button id="nextBtn">Next</button>
 
   <script>
     const BACKEND = "https://played-smithsonian-cal-bills.trycloudflare.com";
 
-   async function triggerReveal() {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("You must log in on the main site first!");
-    console.error("[AR] No token found in localStorage");
-    return;
-  }
+    async function triggerReveal() {
+      try {
+        // Step 1: Generate a temporary AR token
+        const tokenRes = await fetch(`${BACKEND}/generate-ar-token`);
+        const { token, username } = await tokenRes.json();
+        console.log("[AR] Temporary token generated for", username);
 
-  try {
-    const res = await fetch(`${BACKEND}/reveal-next`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
+        // Step 2: Use token to reveal the next section
+        const revealRes = await fetch(`${BACKEND}/reveal-next`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        if (revealRes.ok) {
+          console.log("[AR] Reveal triggered successfully");
+          alert("Main website image will now reveal!");
+        } else {
+          const text = await revealRes.text();
+          console.error("[AR] Reveal failed:", text);
+          alert("Failed to reveal. Check console.");
+        }
+      } catch (err) {
+        console.error("[AR] Error triggering reveal:", err);
+        alert("Error triggering reveal. Check console.");
       }
-    });
-
-    if (res.ok) {
-      console.log("[AR] Reveal triggered successfully");
-      alert("Main website image will now reveal!");
-    } else {
-      console.error("[AR] Reveal failed", await res.text());
-      alert("Failed to reveal. Check console.");
     }
-  } catch (err) {
-    console.error("[AR] Error triggering reveal:", err);
-  }
-}
 
-
-    // Attach the trigger to the button
+    // Attach button
     document.getElementById("nextBtn").addEventListener("click", triggerReveal);
 
     // Marker events
