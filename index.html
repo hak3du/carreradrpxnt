@@ -39,12 +39,18 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
 
-  #ytFrame { display: none; width: 640px; height: 360px; }
+  /* Hidden iframe initially, but rendered */
+  #ytFrame {
+    position: absolute;
+    left: -9999px;
+    width: 640px;
+    height: 360px;
+  }
 </style>
 </head>
 
 <body>
-<div id="instructions">🎥 Scan the marker to reveal video. Sections will unlock automatically.</div>
+<div id="instructions">🎥 Scan the marker to reveal video. Sections unlock automatically.</div>
 
 <!-- Frontend Sections -->
 <div class="ar-marker" data-section-id="section1">
@@ -79,13 +85,17 @@
 
 <script>
 const API_URL = "https://retreat-hobbies-west-inkjet.trycloudflare.com";
+const sections = ["section1", "section2", "section3"];
 
+// Get token from localStorage (optional)
+function getToken() {
+  return localStorage.getItem("arToken") || null;
+}
 
-
-// Unlock a specific section on backend
+// Unlock a section in backend
 async function unlockSection(sectionId) {
   const token = getToken();
-  if(!token) return;
+  if (!token) return;
 
   try {
     const res = await fetch(`${API_URL}/unlock-section`, {
@@ -98,15 +108,15 @@ async function unlockSection(sectionId) {
     });
     const data = await res.json();
     console.log(`Unlocked: ${sectionId}`, data.unlocked_sections);
-  } catch(err) {
+  } catch (err) {
     console.error("Unlock failed:", err);
   }
 }
 
-// Update frontend display based on backend unlocked sections
+// Update frontend sections based on backend
 async function checkUnlockedSections() {
   const token = getToken();
-  if(!token) return;
+  if (!token) return;
 
   try {
     const res = await fetch(`${API_URL}/unlocked-sections`, {
@@ -115,12 +125,15 @@ async function checkUnlockedSections() {
     const data = await res.json();
     const unlocked = data.unlocked_sections || [];
 
+    // Hide all sections
     document.querySelectorAll(".ar-marker").forEach(div => div.style.display = "none");
+
+    // Show unlocked sections
     unlocked.forEach(sec => {
       const el = document.querySelector(`[data-section-id="${sec}"]`);
-      if(el) el.style.display = "flex";
+      if (el) el.style.display = "flex";
     });
-  } catch(err) {
+  } catch (err) {
     console.error(err);
   }
 }
@@ -143,12 +156,12 @@ AFRAME.registerComponent("gesture-controls", {
     });
 
     el.sceneEl.canvas.addEventListener("mousemove", e => {
-      if(!dragging) return;
+      if (!dragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       el.setAttribute("rotation", {
-        x: startRot.x - dy*0.1,
-        y: startRot.y + dx*0.1,
+        x: startRot.x - dy * 0.1,
+        y: startRot.y + dx * 0.1,
         z: startRot.z
       });
     });
@@ -159,24 +172,24 @@ AFRAME.registerComponent("gesture-controls", {
       const scale = el.getAttribute("scale");
       const factor = e.deltaY < 0 ? 1.1 : 0.9;
       el.setAttribute("scale", {
-        x: scale.x*factor,
-        y: scale.y*factor,
-        z: scale.z*factor
+        x: scale.x * factor,
+        y: scale.y * factor,
+        z: scale.z * factor
       });
     });
   }
 });
 
-// Marker events: unlock section and show AR video
+// Marker events
 const marker = document.querySelector("#videoMarker");
 marker.addEventListener("markerFound", () => {
   console.log("Marker detected 🎯");
-  unlockSection("section1"); // Unlock corresponding section
-  document.querySelector("#ytFrame").style.display = "block"; // show video in AR
+  unlockSection("section1");              // Unlock backend section
+  document.querySelector("#ytFrame").style.left = "0"; // Show iframe
 });
 
 marker.addEventListener("markerLost", () => console.log("Marker lost ❌"));
-</script>
 
+</script>
 </body>
 </html>
