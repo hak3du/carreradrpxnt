@@ -1,195 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<title>AHE AR YouTube Interactive</title>
-
-<!-- Core Libraries -->
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-<style>
-  body { margin: 0; overflow: hidden; background: #000; }
-
-  #instructions {
-    position: absolute;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 8px 16px;
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    font-family: monospace;
-    border-radius: 8px;
-    z-index: 9999;
-  }
-
-  .ar-marker {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 20px auto;
-  }
-
-  .ar-marker img {
-    width: 500px;
-    height: auto;
-    display: block;
-    object-fit: contain;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  }
-
-  /* Hidden iframe initially, but rendered */
-  #ytFrame {
-    position: absolute;
-    left: -9999px;
-    width: 640px;
-    height: 360px;
-  }
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <title>AR Next Button Scene</title>
 </head>
+<body style="margin:0; overflow:hidden;">
 
-<body>
-<div id="instructions">🎥 Scan the marker to reveal video. Sections unlock automatically.</div>
+  <!-- AR Scene -->
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    loading-screen="enabled: false"
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+  >
+    <a-marker type="pattern" url="marker.patt" id="ar-marker" emitevents="true">
+      <a-box id="ar-box" position="0 0.5 0" material="color: blue; opacity: 0.5;"></a-box>
+      <a-text id="info-text" value="Press NEXT to reveal" color="white" position="0 1 0" align="center"></a-text>
+      <a-entity light="type: directional; intensity: 1" position="0 2 1"></a-entity>
+      <a-entity light="type: ambient; intensity: 0.5"></a-entity>
+    </a-marker>
+    <a-entity camera></a-entity>
+  </a-scene>
 
-<!-- Frontend Sections -->
-<div class="ar-marker" data-section-id="section1">
-  <img src="Assets/hovercode1.png" alt="section1" />
-</div>
-<div class="ar-marker" data-section-id="section2" style="display:none;">
-  <img src="Assets/hovercode2.png" alt="section2" />
-</div>
-<div class="ar-marker" data-section-id="section3" style="display:none;">
-  <img src="Assets/hovercode3.png" alt="section3" />
-</div>
+  <!-- Next Button -->
+  <button onclick="triggerReveal()" style="
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: limegreen;
+      color: white;
+      font-weight: bold;
+  ">Next</button>
 
-<!-- Hidden YouTube iframe for AR plane -->
-<iframe id="ytFrame" src="https://www.youtube.com/embed/ZQ8qg5Xi018?autoplay=1&mute=1"></iframe>
+  <script>
+    const BACKEND = "https://retreat-hobbies-west-inkjet.trycloudflare.com";
 
-<!-- AR.js Scene -->
-<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
-  <!-- Custom Marker -->
-  <a-marker type="pattern" url="marker.patt" id="videoMarker">
-    <a-entity
-      id="ytPlane"
-      geometry="primitive: plane; width: 2; height: 1;"
-      material="shader: html; target: #ytFrame;"
-      position="0 0 0"
-      rotation="-90 0 0"
-      gesture-controls
-    ></a-entity>
-  </a-marker>
+    async function triggerReveal() {
+      try {
+        const res = await fetch(`${BACKEND}/reveal-next`, { method: "POST" });
+        if (res.ok) {
+          console.log("[AR] Reveal triggered successfully");
+          alert("Main website image will now reveal!");
+        } else {
+          console.error("[AR] Reveal failed", await res.text());
+        }
+      } catch (err) {
+        console.error("[AR] Error triggering reveal:", err);
+      }
+    }
 
-  <a-entity camera></a-entity>
-</a-scene>
-
-<script>
-const API_URL = "https://retreat-hobbies-west-inkjet.trycloudflare.com";
-const sections = ["section1", "section2", "section3"];
-
-// Get token from localStorage (optional)
-function getToken() {
-  return localStorage.getItem("arToken") || null;
-}
-
-// Unlock a section in backend
-async function unlockSection(sectionId) {
-  const token = getToken();
-  if (!token) return;
-
-  try {
-    const res = await fetch(`${API_URL}/unlock-section`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ section_id: sectionId })
+    // Optional: marker events
+    const marker = document.getElementById("ar-marker");
+    marker.addEventListener("markerFound", () => {
+      console.log("[AR] Marker detected");
     });
-    const data = await res.json();
-    console.log(`Unlocked: ${sectionId}`, data.unlocked_sections);
-  } catch (err) {
-    console.error("Unlock failed:", err);
-  }
-}
-
-// Update frontend sections based on backend
-async function checkUnlockedSections() {
-  const token = getToken();
-  if (!token) return;
-
-  try {
-    const res = await fetch(`${API_URL}/unlocked-sections`, {
-      headers: { "Authorization": `Bearer ${token}` }
+    marker.addEventListener("markerLost", () => {
+      console.log("[AR] Marker lost");
     });
-    const data = await res.json();
-    const unlocked = data.unlocked_sections || [];
+  </script>
 
-    // Hide all sections
-    document.querySelectorAll(".ar-marker").forEach(div => div.style.display = "none");
-
-    // Show unlocked sections
-    unlocked.forEach(sec => {
-      const el = document.querySelector(`[data-section-id="${sec}"]`);
-      if (el) el.style.display = "flex";
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// Poll backend every 2 seconds
-setInterval(checkUnlockedSections, 2000);
-
-// Gesture controls for AR plane
-AFRAME.registerComponent("gesture-controls", {
-  init: function() {
-    const el = this.el;
-    let dragging = false, startX, startY, startRot, startScale;
-
-    el.sceneEl.canvas.addEventListener("mousedown", e => {
-      dragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startRot = el.getAttribute("rotation");
-      startScale = el.getAttribute("scale");
-    });
-
-    el.sceneEl.canvas.addEventListener("mousemove", e => {
-      if (!dragging) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      el.setAttribute("rotation", {
-        x: startRot.x - dy * 0.1,
-        y: startRot.y + dx * 0.1,
-        z: startRot.z
-      });
-    });
-
-    el.sceneEl.canvas.addEventListener("mouseup", () => dragging = false);
-
-    el.sceneEl.canvas.addEventListener("wheel", e => {
-      const scale = el.getAttribute("scale");
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
-      el.setAttribute("scale", {
-        x: scale.x * factor,
-        y: scale.y * factor,
-        z: scale.z * factor
-      });
-    });
-  }
-});
-
-// Marker events
-const marker = document.querySelector("#videoMarker");
-marker.addEventListener("markerFound", () => {
-  console.log("Marker detected 🎯");
-  unlockSection("section1");              // Unlock backend section
-  document.querySelector("#ytFrame").style.left = "0"; // Show iframe
-});
-
-marker.addEventListener("markerLost", () => console.log("Marker lost ❌"));
-
-</script>
 </body>
 </html>
