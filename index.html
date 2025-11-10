@@ -43,12 +43,8 @@
     const BACKEND = "https://played-smithsonian-cal-bills.trycloudflare.com";
 
     async function triggerReveal() {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("You must log in on the main site first!");
-        console.error("[AR] No token found in localStorage");
-        return;
-      }
+      // EASY FIX: bypass login check
+      const token = "temporary-token-for-testing"; 
 
       try {
         const res = await fetch(`${BACKEND}/reveal-next`, {
@@ -74,14 +70,10 @@
     // Attach the trigger to the button
     document.getElementById("nextBtn").addEventListener("click", triggerReveal);
 
-    // Optional: marker events
+    // Marker events
     const marker = document.getElementById("ar-marker");
-    marker.addEventListener("markerFound", () => {
-      console.log("[AR] Marker detected");
-    });
-    marker.addEventListener("markerLost", () => {
-      console.log("[AR] Marker lost");
-    });
+    marker.addEventListener("markerFound", () => console.log("[AR] Marker detected"));
+    marker.addEventListener("markerLost", () => console.log("[AR] Marker lost"));
   </script>
 
 </body>
