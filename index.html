@@ -42,30 +42,35 @@
   <script>
     const BACKEND = "https://played-smithsonian-cal-bills.trycloudflare.com";
 
-    async function triggerReveal() {
-      // EASY FIX: bypass login check
-      const token = "temporary-token-for-testing"; 
+   async function triggerReveal() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("You must log in on the main site first!");
+    console.error("[AR] No token found in localStorage");
+    return;
+  }
 
-      try {
-        const res = await fetch(`${BACKEND}/reveal-next`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        });
-
-        if (res.ok) {
-          console.log("[AR] Reveal triggered successfully");
-          alert("Main website image will now reveal!");
-        } else {
-          console.error("[AR] Reveal failed", await res.text());
-          alert("Failed to reveal. Check console.");
-        }
-      } catch (err) {
-        console.error("[AR] Error triggering reveal:", err);
+  try {
+    const res = await fetch(`${BACKEND}/reveal-next`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
       }
+    });
+
+    if (res.ok) {
+      console.log("[AR] Reveal triggered successfully");
+      alert("Main website image will now reveal!");
+    } else {
+      console.error("[AR] Reveal failed", await res.text());
+      alert("Failed to reveal. Check console.");
     }
+  } catch (err) {
+    console.error("[AR] Error triggering reveal:", err);
+  }
+}
+
 
     // Attach the trigger to the button
     document.getElementById("nextBtn").addEventListener("click", triggerReveal);
