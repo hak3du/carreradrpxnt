@@ -1,166 +1,159 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>AR YouTube 3D Video</title>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>AHE Interactive AR Scene</title>
 
-  <!-- A-Frame & AR.s -->
-  <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- Core Libraries -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-  <script>
-    const API_URL = "https://breath-civilization-friday-movers.trycloudflare.com"; // Your backend
-
-    function getToken() {
-      const token = localStorage.getItem("arToken");
-      if (!token) alert("You must login first to access AR content!");
-      return token;
-    }
-
-    async function unlockNextSection() {
-      const token = getToken();
-      if (!token) return;
-
-      try {
-        // Ask backend which section to unlock next
-        const res = await fetch(`${API_URL}/unlocked-sections`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const unlocked = data.unlocked_sections || [];
-        
-        // Define all sections in order
-        const sections = ["section1","section2","section3"];
-        const nextSection = sections.find(sec => !unlocked.includes(sec));
-        if (!nextSection) return;
-
-        // Unlock next section
-        const unlockRes = await fetch(`${API_URL}/unlock-section`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ section_id: nextSection })
-        });
-        const unlockData = await unlockRes.json();
-        console.log("Unlocked:", unlockData.unlocked_sections);
-      } catch(err) {
-        console.error("Failed to unlock next section:", err);
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
       }
-    }
-
-    // Minimal YouTube component for AR
-    AFRAME.registerComponent('youtube-plane', {
-      schema: { videoId: { type: 'string' } },
-      init: function () {
-        const marker = this.el;
-
-        // Hidden video element
-        this.videoEl = document.createElement('video');
-        this.videoEl.setAttribute('playsinline', '');
-        this.videoEl.style.display = 'none';
-        document.body.appendChild(this.videoEl);
-
-        // YT Player API
-        this.player = new YT.Player(this.videoEl, {
-          videoId: this.data.videoId,
-          events: { 'onReady': () => console.log("YT Player ready") }
-        });
-
-        // Marker events
-        marker.addEventListener('markerFound', () => {
-          this.videoEl.style.display = 'block';
-          this.videoEl.play();
-          unlockNextSection(); // Unlock next image on main website
-        });
-
-        marker.addEventListener('markerLost', () => {
-          this.videoEl.pause();
-          this.videoEl.style.display = 'none';
-        });
+      #instructions {
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 16px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        font-family: monospace;
+        border-radius: 8px;
+        z-index: 9999;
       }
-    });
-  </script>
-</head>
+    </style>
 
-<body>
-  <a-scene
-  vr-mode-ui="enabled: false"
-  arjs='sourceType: webcam; debugUIEnabled: false;'
-  embedded
->
-<a-marker id="ytMarker" type="pattern" url="marker.patt">
-  <a-video
-    src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/sintel.mp4"
-    position="0 0.1 0"
-    rotation="-90 0 0"
-    width="1.5"
-    height="0.85"
-    autoplay="true"
-    loop="true"
-  ></a-video>
-</a-marker>
+    <script>
+      const API_URL = "https://breath-civilization-friday-movers.trycloudflare.com";
 
+      function getToken() {
+        const token = localStorage.getItem("arToken");
+        if (!token) alert("You must login first to access AR content!");
+        return token;
+      }
 
+      async function unlockNextSection() {
+        const token = getToken();
+        if (!token) return;
 
-  <a-entity camera></a-entity>
-</a-scene>
-<style>
-  iframe {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 480px;
-    height: 270px;
-    transform: translate(-50%, -50%);
-    border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    transition: all 0.2s ease;
-    cursor: grab;
-    z-index: 9999;
-    resize: both;
-    overflow: auto;
-  }
-</style>
+        try {
+          const res = await fetch(`${API_URL}/unlocked-sections`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const data = await res.json();
+          const unlocked = data.unlocked_sections || [];
 
-<script>
-  const iframe = document.createElement('iframe');
-  iframe.src = "https://www.youtube.com/embed/ZQ8qg5Xi018?autoplay=1&mute=1";
-  document.body.appendChild(iframe);
+          const sections = ["section1", "section2", "section3"];
+          const nextSection = sections.find(sec => !unlocked.includes(sec));
+          if (!nextSection) return;
 
-  let isDragging = false, offsetX = 0, offsetY = 0;
+          const unlockRes = await fetch(`${API_URL}/unlock-section`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ section_id: nextSection })
+          });
 
-  iframe.addEventListener("mousedown", (e) => {
-    isDragging = true;
-    offsetX = e.clientX - iframe.offsetLeft;
-    offsetY = e.clientY - iframe.offsetTop;
-    iframe.style.cursor = "grabbing";
-  });
+          const unlockData = await unlockRes.json();
+          console.log("Unlocked:", unlockData.unlocked_sections);
+        } catch (err) {
+          console.error("Unlock failed:", err);
+        }
+      }
 
-  document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-    iframe.style.left = `${e.clientX - offsetX}px`;
-    iframe.style.top = `${e.clientY - offsetY}px`;
-    iframe.style.transform = "none"; // disables fixed center
-  });
+      // Add interactive gestures (drag/rotate/scale)
+      AFRAME.registerComponent("gesture-controls", {
+        init: function () {
+          const el = this.el;
+          let startX, startY, startRotation, startScale;
 
-  document.addEventListener("mouseup", () => {
-    isDragging = false;
-    iframe.style.cursor = "grab";
-  });
-  const marker = document.querySelector("#ytMarker");
-marker.addEventListener("markerFound", () => {
-  iframe.style.display = "block";
-  unlockNextSection();
-});
-marker.addEventListener("markerLost", () => {
-  iframe.style.display = "none";
-});
+          el.sceneEl.canvas.addEventListener("mousedown", e => {
+            startX = e.clientX;
+            startY = e.clientY;
+            startRotation = el.getAttribute("rotation");
+            startScale = el.getAttribute("scale");
+            this.dragging = true;
+          });
 
-</script>
+          el.sceneEl.canvas.addEventListener("mousemove", e => {
+            if (!this.dragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
 
-<script src="https://www.youtube.com/iframe_api"></script>
+            // Rotate on X and Y
+            el.setAttribute("rotation", {
+              x: startRotation.x - dy * 0.1,
+              y: startRotation.y + dx * 0.1,
+              z: startRotation.z
+            });
+          });
 
-</body>
+          el.sceneEl.canvas.addEventListener("mouseup", () => {
+            this.dragging = false;
+          });
+
+          // Scroll wheel for scaling
+          el.sceneEl.canvas.addEventListener("wheel", e => {
+            const scale = el.getAttribute("scale");
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            el.setAttribute("scale", {
+              x: scale.x * factor,
+              y: scale.y * factor,
+              z: scale.z * factor
+            });
+          });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="instructions">🎥 Scan the marker to reveal the 3D video object. Drag to rotate. Scroll to zoom.</div>
+
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+    >
+      <!-- Custom Marker -->
+      <a-marker type="pattern" url="marker.patt" id="videoMarker">
+        <!-- Video Surface -->
+      <a-entity
+  id="ytPlane"
+  geometry="primitive: plane; width: 2; height: 1;"
+  material="shader: html; target: #ytFrame;"
+  position="0 0 0"
+  rotation="-90 0 0"
+  gesture-controls
+></a-entity>
+
+<iframe id="ytFrame" src="https://www.youtube.com/embed/ZQ8qg5Xi018?autoplay=1&mute=1" width="640" height="360"></iframe>
+
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      const marker = document.querySelector("#videoMarker");
+      const videoScreen = document.querySelector("#videoScreen");
+
+      marker.addEventListener("markerFound", () => {
+        console.log("Marker detected 🎯");
+        unlockNextSection();
+      });
+
+      marker.addEventListener("markerLost", () => {
+        console.log("Marker lost ❌");
+      });
+    </script>
+  </body>
 </html>
