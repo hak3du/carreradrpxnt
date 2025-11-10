@@ -1,159 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>AHE Interactive AR Scene</title>
+<head>
+<meta charset="UTF-8">
+<title>AHE AR YouTube Interactive</title>
 
-    <!-- Core Libraries -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+<!-- Core Libraries -->
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background: #000;
-      }
-      #instructions {
-        position: absolute;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 8px 16px;
-        background: rgba(0, 0, 0, 0.6);
-        color: #fff;
-        font-family: monospace;
-        border-radius: 8px;
-        z-index: 9999;
-      }
-    </style>
+<style>
+  body { margin: 0; overflow: hidden; background: #000; }
+  #instructions {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    font-family: monospace;
+    border-radius: 8px;
+    z-index: 9999;
+  }
+  .ar-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto;
+  }
+  .ar-marker img {
+    width: 500px;
+    height: auto;
+    display: block;
+    object-fit: contain;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  #ytFrame { display: none; width: 640px; height: 360px; }
+</style>
+</head>
 
-    <script>
-      const API_URL = "https://breath-civilization-friday-movers.trycloudflare.com";
+<body>
+<div id="instructions">🎥 Scan the marker to reveal video. Sections will unlock automatically.</div>
 
-      function getToken() {
-        const token = localStorage.getItem("arToken");
-        if (!token) alert("You must login first to access AR content!");
-        return token;
-      }
+<!-- Frontend Sections -->
+<div class="ar-marker" data-section-id="section1">
+  <img src="Assets/hovercode1.png" alt="section1" />
+</div>
+<div class="ar-marker" data-section-id="section2" style="display:none;">
+  <img src="Assets/hovercode2.png" alt="section2" />
+</div>
+<div class="ar-marker" data-section-id="section3" style="display:none;">
+  <img src="Assets/hovercode3.png" alt="section3" />
+</div>
 
-      async function unlockNextSection() {
-        const token = getToken();
-        if (!token) return;
+<!-- Hidden YouTube iframe for AR plane -->
+<iframe id="ytFrame" src="https://www.youtube.com/embed/ZQ8qg5Xi018?autoplay=1&mute=1"></iframe>
 
-        try {
-          const res = await fetch(`${API_URL}/unlocked-sections`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          });
-          const data = await res.json();
-          const unlocked = data.unlocked_sections || [];
+<!-- AR.js Scene -->
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
+  <a-marker type="pattern" url="marker.patt" id="videoMarker">
+    <a-entity
+      id="ytPlane"
+      geometry="primitive: plane; width: 2; height: 1;"
+      material="shader: html; target: #ytFrame;"
+      position="0 0 0"
+      rotation="-90 0 0"
+      gesture-controls
+    ></a-entity>
+  </a-marker>
+  <a-entity camera></a-entity>
+</a-scene>
 
-          const sections = ["section1", "section2", "section3"];
-          const nextSection = sections.find(sec => !unlocked.includes(sec));
-          if (!nextSection) return;
+<script>
+const API_URL = "https://breath-civilization-friday-movers.trycloudflare.com";
+const sections = ["section1", "section2", "section3"];
 
-          const unlockRes = await fetch(`${API_URL}/unlock-section`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ section_id: nextSection })
-          });
+function getToken() {
+  const token = localStorage.getItem("arToken");
+  if(!token) alert("You must login first!");
+  return token;
+}
 
-          const unlockData = await unlockRes.json();
-          console.log("Unlocked:", unlockData.unlocked_sections);
-        } catch (err) {
-          console.error("Unlock failed:", err);
-        }
-      }
+// Unlock section when marker detected
+async function unlockSection(sectionId) {
+  const token = getToken();
+  if(!token) return;
 
-      // Add interactive gestures (drag/rotate/scale)
-      AFRAME.registerComponent("gesture-controls", {
-        init: function () {
-          const el = this.el;
-          let startX, startY, startRotation, startScale;
+  try {
+    const res = await fetch(`${API_URL}/unlock-section`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ section_id: sectionId })
+    });
+    const data = await res.json();
+    console.log(`Unlocked: ${sectionId}`, data.unlocked_sections);
+  } catch(err) {
+    console.error("Unlock failed:", err);
+  }
+}
 
-          el.sceneEl.canvas.addEventListener("mousedown", e => {
-            startX = e.clientX;
-            startY = e.clientY;
-            startRotation = el.getAttribute("rotation");
-            startScale = el.getAttribute("scale");
-            this.dragging = true;
-          });
+// Update frontend based on backend unlocked sections
+async function checkUnlockedSections() {
+  const token = getToken();
+  if(!token) return;
 
-          el.sceneEl.canvas.addEventListener("mousemove", e => {
-            if (!this.dragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
+  try {
+    const res = await fetch(`${API_URL}/unlocked-sections`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const unlocked = data.unlocked_sections || [];
 
-            // Rotate on X and Y
-            el.setAttribute("rotation", {
-              x: startRotation.x - dy * 0.1,
-              y: startRotation.y + dx * 0.1,
-              z: startRotation.z
-            });
-          });
+    document.querySelectorAll(".ar-marker").forEach(div => div.style.display = "none");
+    unlocked.forEach(sec => {
+      const el = document.querySelector(`[data-section-id="${sec}"]`);
+      if(el) el.style.display = "flex";
+    });
+  } catch(err) {
+    console.error(err);
+  }
+}
 
-          el.sceneEl.canvas.addEventListener("mouseup", () => {
-            this.dragging = false;
-          });
+// Poll every 2 seconds
+setInterval(checkUnlockedSections, 2000);
 
-          // Scroll wheel for scaling
-          el.sceneEl.canvas.addEventListener("wheel", e => {
-            const scale = el.getAttribute("scale");
-            const factor = e.deltaY < 0 ? 1.1 : 0.9;
-            el.setAttribute("scale", {
-              x: scale.x * factor,
-              y: scale.y * factor,
-              z: scale.z * factor
-            });
-          });
-        }
+// Gesture controls for AR plane
+AFRAME.registerComponent("gesture-controls", {
+  init: function() {
+    const el = this.el;
+    let dragging = false, startX, startY, startRot, startScale;
+
+    el.sceneEl.canvas.addEventListener("mousedown", e => {
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startRot = el.getAttribute("rotation");
+      startScale = el.getAttribute("scale");
+    });
+
+    el.sceneEl.canvas.addEventListener("mousemove", e => {
+      if(!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.setAttribute("rotation", {
+        x: startRot.x - dy*0.1,
+        y: startRot.y + dx*0.1,
+        z: startRot.z
       });
-    </script>
-  </head>
+    });
 
-  <body>
-    <div id="instructions">🎥 Scan the marker to reveal the 3D video object. Drag to rotate. Scroll to zoom.</div>
+    el.sceneEl.canvas.addEventListener("mouseup", () => dragging = false);
 
-    <a-scene
-      embedded
-      arjs="sourceType: webcam; debugUIEnabled: false;"
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
-    >
-      <!-- Custom Marker -->
-      <a-marker type="pattern" url="marker.patt" id="videoMarker">
-        <!-- Video Surface -->
-      <a-entity
-  id="ytPlane"
-  geometry="primitive: plane; width: 2; height: 1;"
-  material="shader: html; target: #ytFrame;"
-  position="0 0 0"
-  rotation="-90 0 0"
-  gesture-controls
-></a-entity>
-
-<iframe id="ytFrame" src="https://www.youtube.com/embed/ZQ8qg5Xi018?autoplay=1&mute=1" width="640" height="360"></iframe>
-
-      </a-marker>
-
-      <a-entity camera></a-entity>
-    </a-scene>
-
-    <script>
-      const marker = document.querySelector("#videoMarker");
-      const videoScreen = document.querySelector("#videoScreen");
-
-      marker.addEventListener("markerFound", () => {
-        console.log("Marker detected 🎯");
-        unlockNextSection();
+    el.sceneEl.canvas.addEventListener("wheel", e => {
+      const scale = el.getAttribute("scale");
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      el.setAttribute("scale", {
+        x: scale.x*factor,
+        y: scale.y*factor,
+        z: scale.z*factor
       });
+    });
+  }
+});
 
-      marker.addEventListener("markerLost", () => {
-        console.log("Marker lost ❌");
-      });
-    </script>
-  </body>
+// Connect marker events to section unlocking
+const marker = document.querySelector("#videoMarker");
+marker.addEventListener("markerFound", () => {
+  console.log("Marker detected 🎯");
+  unlockSection("section1"); // Example: unlock section1 on first marker
+});
+
+marker.addEventListener("markerLost", () => console.log("Marker lost ❌"));
+</script>
+
+</body>
 </html>
