@@ -80,12 +80,7 @@
 <script>
 const API_URL = "https://retreat-hobbies-west-inkjet.trycloudflare.com";
 
-// Get auth token
-function getToken() {
-  const token = localStorage.getItem("arToken");
-  if(!token) alert("You must login first!");
-  return token;
-}
+
 
 // Unlock a specific section on backend
 async function unlockSection(sectionId) {
